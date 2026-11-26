@@ -2,31 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PNR Status Checker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PNR Status</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="container">
-    <h1>🚆 PNR Status</h1>
-    <p class="subtitle">Enter your 10-digit PNR number</p>
+  <main class="wrap">
+    <header class="top">
+      <h1>PNR status</h1>
+      <p>Enter your 10-digit PNR to see your booking and seat status.</p>
+    </header>
 
-    <form id="pnr-form">
-      <input
-        id="pnr-input"
-        type="text"
-        inputmode="numeric"
-        maxlength="10"
-        placeholder="e.g. 2412345678"
-        autocomplete="off"
-      />
-      <button type="submit" id="check-btn">Check Status</button>
+    <form class="search" id="form">
+      <input id="pnr" type="text" inputmode="numeric" maxlength="10"
+             autocomplete="off" placeholder="10-digit PNR" aria-label="PNR number" />
+      <button id="check" type="submit">Check status</button>
     </form>
 
-    <p id="message"></p>
-    <section id="result"></section>
+    <div id="result" aria-live="polite"></div>
   </main>
-
   <script src="script.js"></script>
 </body>
 </html>
