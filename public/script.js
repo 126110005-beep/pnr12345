@@ -4,66 +4,103 @@ const button = document.getElementById('check');
 const result = document.getElementById('result');
 
 function esc(v) {
-  return String(v ?? '-').replace(/[&<>"']/g, c => (
+  return String(v ?? '').replace(/[&<>"']/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ));
 }
 
-function badgeClass(status) {
-  const s = (status || '').toUpperCase();
-  if (s.startsWith('CNF')) return 'confirmed';
-  if (s.startsWith('RAC')) return 'rac';
-  return 'waiting';
-}
-
-function detail(label, value) {
-  return `<div class="detail"><dt>${label}</dt><dd>${esc(value)}</dd></div>`;
+// One row of the form. `value` comes from the API; rows with no value
+// (marked `ask`) are left empty and highlighted for the user to fill in.
+function row({ id, label, value = '', ask = false, placeholder = '', type = 'text', area = false }) {
+  const cls = ask ? 'need' : '';
+  const control = area
+    ? `<textarea id="${id}" rows="1" class="${cls}" placeholder="${esc(placeholder)}">${esc(value)}</textarea>`
+    : `<input id="${id}" type="${type}" class="${cls}" value="${esc(value)}" placeholder="${esc(placeholder)}" autocomplete="off" />`;
+  return `
+    <div class="row">
+      <label for="${id}">${label}</label>
+      <div class="field">${control}</div>
+    </div>`;
 }
 
 function render(d) {
-  const showBoarding = d.boarding && d.boarding !== d.from;
-  const prepared = /^chart prepared/i.test(d.chartStatus);
-
-  const stops = [
-    { label: 'From', code: d.from },
-    ...(showBoarding ? [{ label: 'Boarding at', code: d.boarding }] : []),
-    { label: 'To', code: d.to },
-  ].map(s => `
-      <li>
-        <span class="stop-label">${s.label}</span>
-        <span class="stop-code">${esc(s.code)}</span>
-      </li>`).join('');
-
-  const passengers = d.passengers.map(p => `
-      <div class="passenger">
-        <div class="p-name">Passenger ${esc(p.number)}</div>
-        <div class="p-booked">Booked as ${esc(p.bookingStatus)}</div>
-        <div class="p-now">
-          <span class="p-now-label">Current status</span>
-          <span class="badge ${badgeClass(p.currentStatus)}">${esc(p.currentStatus)}</span>
-        </div>
-      </div>`).join('');
+  const train = [d.trainNumber, d.trainName].filter(Boolean).join(' / ');
+  const berths = d.passengers ? d.passengers.length : '';
 
   result.innerHTML = `
-    <article class="ticket">
-      <section class="ticket-head">
-        <p class="pnr-line">PNR ${esc(d.pnr)}${d.cached ? ' (saved result)' : ''}</p>
-        <h2>${esc(d.trainName)}</h2>
-        <p class="train-no">Train ${esc(d.trainNumber)}</p>
-        <span class="chart ${prepared ? 'done' : ''}">${esc(d.chartStatus)}</span>
-      </section>
+    <article class="sheet" id="sheet">
+      <header class="sheet-head">
+        <span class="form-no">NS 871(A)</span>
+        <h1>Requisition for reservation through</h1>
+        <h2>Emergency quota</h2>
+      </header>
 
-      <ol class="route">${stops}</ol>
+      <div class="logo-band">
+        <img src="logo.png" alt="Indian Railways" onerror="this.style.display='none'" />
+      </div>
 
-      <dl class="details">
-        ${detail('Journey date', d.journeyDate)}
-        ${detail('Class', d.travelClass)}
-      </dl>
+      <div class="rows">
+        ${row({ id: 'f-request', label: 'Request of', ask: true, placeholder: 'Name / designation of the requesting person' })}
+        ${row({ id: 'f-train', label: 'Train No. / Name', value: train })}
+        ${row({ id: 'f-date', label: 'Date of journey', value: d.journeyDate })}
+        ${row({ id: 'f-berths', label: 'No. of berths', value: berths })}
+        ${row({ id: 'f-class', label: 'Class', value: d.travelClass })}
+        ${row({ id: 'f-from', label: 'Station from', value: d.from })}
+        ${row({ id: 'f-to', label: 'Station to', value: d.to })}
+        ${row({ id: 'f-pnr', label: 'PNR number', value: d.pnr })}
+        ${row({ id: 'f-names', label: 'Name of passanger', ask: true, area: true, placeholder: 'Full name(s) of passenger(s)' })}
+        ${row({ id: 'f-mobile', label: 'Mob. no. of passanger', ask: true, type: 'tel', placeholder: '10-digit mobile number' })}
+      </div>
+    </article>
 
-      <div class="tear" aria-hidden="true"></div>
+    <p class="hint">Details from the PNR are filled in. The yellow fields are not available from the PNR, so please fill them in. Every field can be edited.</p>
 
-      <section class="passengers">${passengers}</section>
-    </article>`;
+    <div class="actions">
+      <button type="button" id="download">Download as image</button>
+      <button type="button" id="print" class="secondary">Print / save as PDF</button>
+    </div>
+    <p class="status" id="status" role="status"></p>`;
+
+  result.querySelectorAll('textarea').forEach(autosize);
+  result.addEventListener('input', onInput);
+  document.getElementById('download').addEventListener('click', downloadImage);
+  document.getElementById('print').addEventListener('click', () => window.print());
+}
+
+function autosize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.max(60, el.scrollHeight) + 'px';
+}
+
+function onInput(e) {
+  if (e.target.tagName === 'TEXTAREA') autosize(e.target);
+}
+
+async function downloadImage() {
+  const status = document.getElementById('status');
+  const missing = ['f-request', 'f-names', 'f-mobile'].filter(id => !document.getElementById(id).value.trim());
+  if (missing.length && !confirm('Some fields are still empty. Download anyway?')) return;
+
+  if (typeof html2canvas === 'undefined') {
+    status.textContent = 'Image export could not load. Use "Print / save as PDF" instead.';
+    return;
+  }
+
+  const sheet = document.getElementById('sheet');
+  sheet.classList.add('exporting');
+  status.textContent = 'Creating image...';
+  try {
+    const canvas = await html2canvas(sheet, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const link = document.createElement('a');
+    link.download = 'emergency-quota-' + document.getElementById('f-pnr').value.trim() + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    status.textContent = 'Image downloaded.';
+  } catch (err) {
+    status.textContent = 'Could not create the image. Try "Print / save as PDF".';
+  } finally {
+    sheet.classList.remove('exporting');
+  }
 }
 
 function showError(msg) {
@@ -78,7 +115,7 @@ async function checkPnr(e) {
     return;
   }
   button.disabled = true;
-  button.textContent = 'Checking...';
+  button.textContent = 'Fetching...';
   result.innerHTML = '<p class="message">Fetching your booking...</p>';
   try {
     const res = await fetch('/api/pnr/' + pnr);
@@ -89,7 +126,7 @@ async function checkPnr(e) {
     showError(err.message);
   } finally {
     button.disabled = false;
-    button.textContent = 'Check status';
+    button.textContent = 'Fetch details';
   }
 }
 
