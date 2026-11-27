@@ -28,11 +28,6 @@ const ROWS = [
   { id: 'contactNo', label: 'Contact number (auto-off)' },
   { id: 'signMobile', label: 'Mobile number', type: 'tel', max: 10 },
   { id: 'officeAddress', label: 'Office address' },
-  { type: 'bar', label: 'PNR status details' },
-  { id: 'boarding', label: 'Boarding station (code / full name)', up: 1, y: 1 },
-  { id: 'bookingStatus', label: 'Booking status', y: 1 },
-  { id: 'currentStatus', label: 'Current status', y: 1 },
-  { id: 'chartStatus', label: 'Chart status', type: 'select', opts: [['Chart Prepared', 'Chart Prepared'], ['Chart Not Prepared', 'Chart Not Prepared']], y: 1 },
 ];
 
 const FIELDS = ROWS.filter(r => r.id).map(r => r.id);
@@ -223,14 +218,7 @@ function applyApi(d) {
   setApiVal('cls', toClassCode(d.travelClass));
   setApiVal('from', formatStation(d.from, d.fromName));
   setApiVal('to', formatStation(d.to, d.toName));
-  setApiVal('boarding', formatStation(d.boarding, d.boardingName));
-  if (d.passengers && d.passengers.length) {
-    setVal('berths', d.passengers.length);
-    setVal('bookingStatus', d.passengers.map(p => p.bookingStatus).filter(Boolean).join(', '));
-    setVal('currentStatus', d.passengers.map(p => p.currentStatus).filter(Boolean).join(', '));
-  }
-  if (/not/i.test(d.chartStatus || '')) $('chartStatus').value = 'Chart Not Prepared';
-  else if (/prepared/i.test(d.chartStatus || '')) $('chartStatus').value = 'Chart Prepared';
+  if (d.passengers && d.passengers.length) setVal('berths', d.passengers.length);
 }
 
 function pnrHint(text, ok) {
@@ -549,7 +537,7 @@ $('printForm').addEventListener('click', () => {
 /* ---------- Start ---------- */
 buildRows();
 loadDraft();
-['from', 'to', 'boarding'].forEach(id => $(id).setAttribute('list', 'stationList'));
+['from', 'to'].forEach(id => $(id).setAttribute('list', 'stationList'));
 loadStations();
 try { const s = localStorage.getItem(SIG_KEY); if (s) setSignature(s); } catch (e) {}
 
@@ -571,7 +559,7 @@ $('pnr').addEventListener('input', e => {
   saveDraft();
 });
 let stationTimer;
-['from', 'to', 'boarding'].forEach(id => $(id).addEventListener('input', e => {
+['from', 'to'].forEach(id => $(id).addEventListener('input', e => {
   e.target.value = e.target.value.toUpperCase();
   clearTimeout(stationTimer);
   stationTimer = setTimeout(() => {
