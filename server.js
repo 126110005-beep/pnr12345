@@ -156,6 +156,13 @@ app.get('/api/pnr/:pnr', async (req, res) => {
         signal: controller.signal,
       }).finally(() => clearTimeout(timeout));
 
+      if (response.status === 429) {
+        console.warn('PNR provider rate-limited the request (HTTP 429).');
+        return res.status(429).json({
+          error: 'The PNR service is rate-limited right now. Please wait before trying again.',
+        });
+      }
+
       if (!response.ok) {
         throw new Error(`API responded with status ${response.status}`);
       }

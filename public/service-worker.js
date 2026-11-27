@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pnr-app-static-v4';
+const CACHE_NAME = 'pnr-app-static-v5';
 const APP_ASSETS = [
   '/index.html',
   '/requisition.html',
