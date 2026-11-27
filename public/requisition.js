@@ -229,7 +229,7 @@ function applyApi(d) {
   setApiVal('boarding', formatStation(d.boarding, d.boardingName));
   rowOf('time').querySelector('.hint').textContent = d.boardingTime
     ? ''
-    : 'Boarding time was not provided by the PNR service; enter it manually.';
+    : d.scheduleError || 'Boarding time was not provided; enter it manually.';
   if (d.passengers && d.passengers.length) {
     setVal('berths', d.passengers.length);
     setVal('bookingStatus', expandRailStatus(d.passengers.map(p => p.bookingStatus).filter(Boolean).join(', ')));
