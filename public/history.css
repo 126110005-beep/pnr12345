@@ -1,0 +1,63 @@
+/* Saved PNR chips, shared by both pages (they sit on the dark page background) */
+.history { margin: 0 0 20px; }
+.hist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b9c3d8;
+}
+.hist-clear {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #b9c3d8;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.hist-clear:hover { color: #fff; }
+.hist-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.hist-item {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.hist-item:hover { border-color: #b58a3c; background: rgba(255, 255, 255, 0.12); }
+.hist-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px 12px;
+  font: inherit;
+  text-align: left;
+  color: #fff;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.hist-pnr { font-weight: 700; font-size: 15px; letter-spacing: 0.06em; }
+.hist-sub { font-size: 12px; color: #b9c3d8; }
+.hist-del {
+  width: 32px;
+  font-size: 18px;
+  color: #b9c3d8;
+  background: none;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+.hist-del:hover { color: #ffb4ab; background: rgba(255, 255, 255, 0.06); }
+.hist-pick:focus-visible, .hist-del:focus-visible, .hist-clear:focus-visible { outline: 2px solid #b58a3c; outline-offset: -2px; }
+@media print { .history { display: none !important; } }
