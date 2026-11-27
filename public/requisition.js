@@ -13,12 +13,13 @@ const CLASSES = [
 // One entry per row of the Excel sheet. y = yellow (to be filled), opt = optional (prints "-")
 const ROWS = [
   { id: 'requestOf', label: 'Request of', y: 1 },
-  { id: 'train', label: 'Train no. / name', y: 1 },
+  { id: 'train', label: 'Train no. / full name', y: 1 },
   { id: 'date', label: 'Date of journey', type: 'date', y: 1 },
+  { id: 'time', label: 'Time of boarding', type: 'time', y: 1 },
   { id: 'berths', label: 'No. of berths', type: 'number', y: 1 },
-  { id: 'cls', label: 'Class', type: 'select', y: 1 },
-  { id: 'from', label: 'Station from', up: 1, y: 1 },
-  { id: 'to', label: 'Station to', up: 1, y: 1 },
+  { id: 'cls', label: 'Class (short / full)', type: 'select', y: 1 },
+  { id: 'from', label: 'Station from (code / name)', up: 1, y: 1 },
+  { id: 'to', label: 'Station to (code / name)', up: 1, y: 1 },
   { id: 'pnr', label: 'PNR number', type: 'tel', max: 10, fetch: 1, y: 1 },
   { id: 'passenger', label: 'Name of passenger', y: 1 },
   { id: 'mobile', label: 'Mob. no. of passenger', type: 'tel', max: 10, y: 1 },
@@ -29,7 +30,7 @@ const ROWS = [
   { id: 'signMobile', label: 'Mobile number', type: 'tel', max: 10 },
   { id: 'officeAddress', label: 'Office address' },
   { type: 'bar', label: 'PNR status details' },
-  { id: 'boarding', label: 'Boarding station', up: 1, y: 1 },
+  { id: 'boarding', label: 'Boarding station (code / name)', up: 1, y: 1 },
   { id: 'bookingStatus', label: 'Booking status', y: 1 },
   { id: 'currentStatus', label: 'Current status', y: 1 },
   { id: 'chartStatus', label: 'Chart status', type: 'select', opts: [['Chart Prepared', 'Chart Prepared'], ['Chart Not Prepared', 'Chart Not Prepared']], y: 1 },
@@ -50,8 +51,8 @@ const RULES = {
   pnr: v => /^\d{10}$/.test(v) || 'PNR must be exactly 10 digits.',
   mobile: v => /^[6-9]\d{9}$/.test(v) || 'Enter a valid 10-digit mobile number.',
   berths: v => (+v >= 1 && +v <= 99) || 'Enter a number from 1 to 99.',
-  from: v => /^[A-Za-z]{2,5}$/.test(v) || 'Use the station code, e.g. NDLS.',
-  to: v => /^[A-Za-z]{2,5}$/.test(v) || 'Use the station code, e.g. NDLS.',
+  from: v => /^[A-Za-z]{2,5}(?:\s*-\s*[A-Za-z][A-Za-z .'-]*)?$/.test(v) || 'Use the station code or code and full name.',
+  to: v => /^[A-Za-z]{2,5}(?:\s*-\s*[A-Za-z][A-Za-z .'-]*)?$/.test(v) || 'Use the station code or code and full name.',
 };
 
 /* ---------- Build the rows ---------- */
@@ -177,6 +178,19 @@ function toISODate(s) {
   const d = new Date(s);
   return isNaN(d) ? '' : d.toISOString().slice(0, 10);
 }
+function toISOTime(s) {
+  if (!s) return '';
+  const text = String(s).trim();
+  let m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(text);
+  if (m) return `${String(+m[1]).padStart(2, '0')}:${m[2]}`;
+  m = /^(\d{1,2})[:.](\d{2})\s*(AM|PM)$/i.exec(text);
+  if (m) {
+    let hour = +m[1] % 12;
+    if (/PM/i.test(m[3])) hour += 12;
+    return `${String(hour).padStart(2, '0')}:${m[2]}`;
+  }
+  return '';
+}
 function toClassCode(s) {
   const c = String(s || '').toUpperCase().replace(/\s/g, '');
   const map = { '1AC': '1A', '2AC': '2A', '3AC': '3A', '3ECO': '3E', SLEEPER: 'SL' };
@@ -184,15 +198,23 @@ function toClassCode(s) {
   return CLASSES.some(([v]) => v === code) ? code : '';
 }
 function setVal(id, v) { if (v !== undefined && v !== null && v !== '') $(id).value = v; }
+function formatStation(code, name) {
+  const c = String(code || '').trim().toUpperCase();
+  const n = String(name || '').trim().toUpperCase();
+  if (!c) return n;
+  if (!n || n === c || n.includes(c)) return c;
+  return `${c} - ${n}`;
+}
 
 // Puts a PNR status result into the form (used by "Fetch details" and by saved PNRs)
 function applyApi(d) {
   setVal('train', [d.trainNumber, d.trainName].filter(Boolean).join(' '));
   setVal('date', toISODate(d.journeyDate));
+  setVal('time', toISOTime(d.boardingTime));
   setVal('cls', toClassCode(d.travelClass));
-  setVal('from', (d.from || '').toUpperCase());
-  setVal('to', (d.to || '').toUpperCase());
-  setVal('boarding', (d.boarding || '').toUpperCase());
+  setVal('from', formatStation(d.from, d.fromName));
+  setVal('to', formatStation(d.to, d.toName));
+  setVal('boarding', formatStation(d.boarding, d.boardingName));
   if (d.passengers && d.passengers.length) {
     setVal('berths', d.passengers.length);
     setVal('bookingStatus', d.passengers.map(p => p.bookingStatus).filter(Boolean).join(', '));
