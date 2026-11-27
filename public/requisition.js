@@ -12,16 +12,16 @@ const CLASSES = [
 
 // One entry per row of the Excel sheet. y = yellow (to be filled), opt = optional (prints "-")
 const ROWS = [
-  { id: 'requestOf', label: 'Request of', ph: 'Name and designation of requesting officer' },
-  { id: 'train', label: 'Train no. / name', ph: 'e.g. 15667 Kamakhya Gandhidham Express', y: 1 },
+  { id: 'requestOf', label: 'Request of', y: 1 },
+  { id: 'train', label: 'Train no. / name', y: 1 },
   { id: 'date', label: 'Date of journey', type: 'date', y: 1 },
-  { id: 'berths', label: 'No. of berths', type: 'number', ph: '1 to 99', y: 1 },
+  { id: 'berths', label: 'No. of berths', type: 'number', y: 1 },
   { id: 'cls', label: 'Class', type: 'select', y: 1 },
-  { id: 'from', label: 'Station from', up: 1, ph: 'e.g. GIMB', y: 1 },
-  { id: 'to', label: 'Station to', up: 1, ph: 'e.g. KYQ', y: 1 },
-  { id: 'pnr', label: 'PNR number', type: 'tel', max: 10, ph: '10 digits', fetch: 1, y: 1 },
-  { id: 'passenger', label: 'Name of passenger', ph: 'e.g. MADHURESH + 1', y: 1 },
-  { id: 'mobile', label: 'Mob. no. of passenger', type: 'tel', max: 10, ph: '10 digits', y: 1 },
+  { id: 'from', label: 'Station from', up: 1, y: 1 },
+  { id: 'to', label: 'Station to', up: 1, y: 1 },
+  { id: 'pnr', label: 'PNR number', type: 'tel', max: 10, fetch: 1, y: 1 },
+  { id: 'passenger', label: 'Name of passenger', y: 1 },
+  { id: 'mobile', label: 'Mob. no. of passenger', type: 'tel', max: 10, y: 1 },
   { type: 'signature', label: 'Signature' },
   { id: 'signName', label: 'Name' },
   { id: 'designation', label: 'Designation' },
@@ -39,7 +39,7 @@ const FIELDS = ROWS.filter(r => r.id).map(r => r.id);
 const REQUIRED = ['requestOf', 'train', 'date', 'berths', 'cls', 'from', 'to', 'pnr', 'passenger', 'mobile'];
 // Fixed details from the Excel sheet: pre-filled, and kept when you press Clear form
 const SIGNER = {
-  requestOf: 'ABHISHEK CMI-CT GIMB', signName: 'MANISH', designation: 'CMI CT GIM', contactNo: '093-48349',
+  signName: 'MANISH GUPTA', designation: 'CMI CT GIM', contactNo: '093-48349',
   signMobile: '9724045398', officeAddress: 'AREA MANAGER OFFICE GANDHIDHAM KUTCH',
 };
 const LABEL = Object.fromEntries(ROWS.filter(r => r.id).map(r => [r.id, r.label]));
@@ -96,7 +96,6 @@ function buildRows() {
       el.type = r.type || 'text';
       if (r.max) { el.maxLength = r.max; el.inputMode = 'numeric'; }
       if (r.type === 'number') { el.min = 1; el.max = 99; el.inputMode = 'numeric'; }
-      if (r.ph) el.placeholder = r.ph;
       el.autocomplete = 'off';
     }
     el.id = r.id; el.name = r.id;
@@ -155,10 +154,16 @@ const saveDraft = () => {
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify(Object.fromEntries(FIELDS.map(id => [id, $(id).value])))); } catch (e) {}
 };
 function loadDraft() {
-  FIELDS.forEach(id => { if (SIGNER[id] !== undefined) $(id).value = SIGNER[id]; });
+  const yellowIds = new Set(ROWS.filter(r => r.y && r.id).map(r => r.id));
+  FIELDS.forEach(id => {
+    $(id).value = '';
+    if (SIGNER[id] !== undefined) $(id).value = SIGNER[id];
+  });
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
-    if (d) FIELDS.forEach(id => { if (SIGNER[id] === undefined && d[id] != null) $(id).value = d[id]; });
+    if (d) FIELDS.forEach(id => {
+      if (SIGNER[id] === undefined && id !== 'requestOf' && !yellowIds.has(id) && d[id] != null) $(id).value = d[id];
+    });
   } catch (e) {}
 }
 
@@ -399,7 +404,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 function shown(id) {
   const v = $(id).value.trim();
-  if (!v) return '-';
+  if (!v) return '';
   if (id === 'date') { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v); return m ? `${m[3]}-${MONTHS[+m[2] - 1]}-${m[1]}` : v; }
   if (id === 'time') { const m = /^(\d{2}):(\d{2})$/.exec(v); if (!m) return v; const h = +m[1]; return `${String(h % 12 || 12).padStart(2, '0')}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`; }
   return v;
