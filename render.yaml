@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: pnr-status-app
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: USE_MOCK
+        value: false
+      - key: PNR_API_URL
+        sync: false
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: RAPIDAPI_HOST
+        sync: false

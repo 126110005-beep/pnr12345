@@ -117,9 +117,25 @@ function buildRows() {
     } else {
       cell.append(el, hint);
     }
+
     row.append(lab, cell);
     host.appendChild(row);
   });
+}
+
+async function loadStations(query) {
+  try {
+    const res = await fetch('/api/stations?q=' + encodeURIComponent(query || ''));
+    if (!res.ok) return;
+    const stations = await res.json();
+    const list = $('stationList');
+    list.innerHTML = '';
+    stations.forEach(({ code, name }) => {
+      const option = document.createElement('option');
+      option.value = `${code} - ${name}`;
+      list.appendChild(option);
+    });
+  } catch (e) {}
 }
 
 const rowOf = id => form.querySelector(`.row[data-f="${id}"]`);
@@ -511,9 +527,15 @@ $('reset').addEventListener('click', () => {
   saveDraft(); say('Form cleared. Signer block and signature kept.');
 });
 
+$('printForm').addEventListener('click', () => {
+  if (validateAll()) window.print();
+});
+
 /* ---------- Start ---------- */
 buildRows();
 loadDraft();
+['from', 'to', 'boarding'].forEach(id => $(id).setAttribute('list', 'stationList'));
+loadStations();
 try { const s = localStorage.getItem(SIG_KEY); if (s) setSignature(s); } catch (e) {}
 
 $('pnr').setAttribute('list', 'pnrList');
@@ -533,7 +555,15 @@ $('pnr').addEventListener('input', e => {
   else { PnrHistory.save(v, { form: snapshot() }); showHistory(); }
   saveDraft();
 });
-['from', 'to', 'boarding'].forEach(id => $(id).addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); }));
+let stationTimer;
+['from', 'to', 'boarding'].forEach(id => $(id).addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase();
+  clearTimeout(stationTimer);
+  stationTimer = setTimeout(() => {
+    const query = e.target.value.replace(/^\s*/, '').split(/\s+-\s*/)[0];
+    loadStations(query);
+  }, 150);
+}));
 FIELDS.forEach(id => {
   const el = $(id);
   el.addEventListener('input', saveDraft);

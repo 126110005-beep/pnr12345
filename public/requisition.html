@@ -15,6 +15,7 @@
     <nav class="topnav no-print"><a href="index.html">Back to PNR status</a></nav>
 
     <datalist id="pnrList"></datalist>
+    <datalist id="stationList"></datalist>
     <!-- Saved PNRs: click one to bring back everything you entered for it -->
     <section id="history" class="history no-print" hidden></section>
 
@@ -29,6 +30,7 @@
 
     <div class="actions no-print">
       <button class="btn primary" type="submit" form="form">Download image</button>
+      <button class="btn" type="button" id="printForm">Print / Save PDF</button>
       <button class="btn" type="button" id="reset">Clear form</button>
     </div>
     <p class="status no-print" id="status" role="status" aria-live="polite"></p>

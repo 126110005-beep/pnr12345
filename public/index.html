@@ -27,6 +27,11 @@
       <button id="go" class="go" type="submit">Check status</button>
     </form>
     <p id="msg" class="msg" role="status" aria-live="polite"></p>
+    <div id="resultActions" class="result-actions" hidden>
+      <button id="refresh" class="mini-btn" type="button">Refresh status</button>
+      <button id="notify" class="mini-btn" type="button">Enable change alerts</button>
+      <span id="lastChecked" class="last-checked"></span>
+    </div>
 
     <section id="result" class="card" hidden>
       <div class="card-head">

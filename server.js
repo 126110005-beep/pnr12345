@@ -20,7 +20,27 @@ app.get('/', (req, res) => {
   res.redirect('/requisition.html');
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', mock: USE_MOCK });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/api/stations', (req, res) => {
+  const query = String(req.query.q || '').trim().toUpperCase();
+  const entries = Object.entries(stationNames);
+  const matches = entries
+    .filter(([code, name]) => !query || code.includes(query) || name.toUpperCase().includes(query))
+    .sort(([a, an], [b, bn]) => {
+      if (!query) return an.localeCompare(bn);
+      const ac = a.startsWith(query) ? 0 : 1;
+      const bc = b.startsWith(query) ? 0 : 1;
+      return ac - bc || an.localeCompare(bn);
+    })
+    .slice(0, 20)
+    .map(([code, name]) => ({ code, name }));
+  res.json(matches);
+});
 
 // Simple in-memory cache: the same PNR checked again within 10 minutes
 // is answered from memory instead of calling the API again.
@@ -102,6 +122,7 @@ function normalize(pnr, raw) {
 // ---------- The API route the frontend calls ----------
 app.get('/api/pnr/:pnr', async (req, res) => {
   const { pnr } = req.params;
+  if (req.query.refresh === '1') cache.delete(pnr);
 
   // 1. Validate: a PNR is exactly 10 digits
   if (!/^\d{10}$/.test(pnr)) {
