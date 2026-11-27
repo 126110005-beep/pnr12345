@@ -2,8 +2,9 @@
 .history { margin: 0 0 20px; }
 .hist-head {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 12px;
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 700;
@@ -11,6 +12,10 @@
   text-transform: uppercase;
   color: #b9c3d8;
 }
+.hist-tools { display: flex; gap: 10px; margin-left: auto; }
+.hist-empty { margin: 0; color: #b9c3d8; font-size: 13px; }
+.hist-clear:disabled { opacity: 0.45; cursor: default; }
+.privacy-hint { margin: -12px 2px 18px; color: #98a5bf; font-size: 12px; }
 .hist-clear {
   font: inherit;
   font-size: 13px;

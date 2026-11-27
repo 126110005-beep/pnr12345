@@ -170,7 +170,6 @@ const saveDraft = () => {
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify(Object.fromEntries(FIELDS.map(id => [id, $(id).value])))); } catch (e) {}
 };
 function loadDraft() {
-  const yellowIds = new Set(ROWS.filter(r => r.y && r.id).map(r => r.id));
   FIELDS.forEach(id => {
     $(id).value = '';
     if (SIGNER[id] !== undefined) $(id).value = SIGNER[id];
@@ -178,7 +177,7 @@ function loadDraft() {
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
     if (d) FIELDS.forEach(id => {
-      if (SIGNER[id] === undefined && id !== 'requestOf' && !yellowIds.has(id) && d[id] != null) $(id).value = d[id];
+      if (SIGNER[id] === undefined && d[id] != null) $(id).value = d[id];
     });
   } catch (e) {}
 }
@@ -268,6 +267,8 @@ const snapshot = () => Object.fromEntries(PER_PNR.map(id => [id, $(id).value]));
 function showHistory() {
   PnrHistory.render($('history'), loadPnr);
 }
+window.addEventListener('pnr-history-updated', showHistory);
+window.addEventListener('pnr-backup-message', e => say(e.detail.message, e.detail.bad));
 
 // Bring back everything saved for a PNR
 function loadPnr(pnr) {

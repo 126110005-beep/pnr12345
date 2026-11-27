@@ -21,6 +21,7 @@
 
     <datalist id="pnrList"></datalist>
     <section id="history" class="history" hidden></section>
+    <p class="privacy-hint">Saved PNRs and status history stay in this browser. Export files may include requisition form details.</p>
 
     <form id="pnrForm" class="search" novalidate>
       <input id="pnr" type="text" inputmode="numeric" maxlength="10" placeholder="10-digit PNR" autocomplete="off" list="pnrList" aria-label="PNR number" />
@@ -51,11 +52,16 @@
         <div><dt>Class</dt><dd id="rClass"></dd></div>
         <div><dt>Boarding</dt><dd id="rBoard"></dd></div>
       </dl>
+      <p class="journey-countdown" id="journeyCountdown" hidden></p>
       <table>
         <thead><tr><th>#</th><th>Booking status</th><th>Current status</th></tr></thead>
         <tbody id="rRows"></tbody>
       </table>
       <p class="note" id="rNote"></p>
+      <details id="statusHistoryPanel" class="status-history" hidden>
+        <summary>Saved status history</summary>
+        <ol id="statusTimeline"></ol>
+      </details>
     </section>
   </main>
 

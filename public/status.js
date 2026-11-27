@@ -7,6 +7,51 @@ function setMsg(text, bad) {
   $('msg').className = 'msg' + (bad ? ' err' : '');
 }
 
+function journeyCountdown(value) {
+  const text = String(value || '').trim();
+  let year, month, day, match;
+  if ((match = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/.exec(text))) {
+    day = Number(match[1]); month = Number(match[2]); year = Number(match[3]);
+  } else if ((match = /^(\d{4})-(\d{2})-(\d{2})/.exec(text))) {
+    year = Number(match[1]); month = Number(match[2]); day = Number(match[3]);
+  } else {
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) return '';
+    year = parsed.getFullYear(); month = parsed.getMonth() + 1; day = parsed.getDate();
+  }
+  const target = new Date(year, month - 1, day);
+  if (target.getFullYear() !== year || target.getMonth() !== month - 1 || target.getDate() !== day) return '';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (days > 1) return `Journey in ${days} days`;
+  if (days === 1) return 'Journey is tomorrow';
+  if (days === 0) return 'Journey is today';
+  if (days === -1) return 'Journey was yesterday';
+  return `Journey was ${Math.abs(days)} days ago`;
+}
+
+function renderStatusHistory(pnr) {
+  const snapshots = (PnrHistory.get(pnr) || {}).statusHistory || [];
+  const panel = $('statusHistoryPanel');
+  const list = $('statusTimeline');
+  list.innerHTML = '';
+  panel.hidden = snapshots.length === 0;
+  snapshots.slice().reverse().forEach(snapshot => {
+    const item = document.createElement('li');
+    const status = [
+      snapshot.chartStatus,
+      ...(snapshot.passengers || []).map(p => `Passenger ${p.number}: ${p.currentStatus || p.bookingStatus || 'Unknown'}`),
+    ].filter(Boolean).join(' · ') || 'Status recorded';
+    item.appendChild(document.createTextNode(status));
+    const time = document.createElement('time');
+    time.dateTime = new Date(snapshot.checkedAt).toISOString();
+    time.textContent = new Date(snapshot.checkedAt).toLocaleString();
+    item.appendChild(time);
+    list.appendChild(item);
+  });
+}
+
 function show(d) {
   $('rTrain').textContent = [d.trainNumber, d.trainName].filter(Boolean).join(' ') || 'Train details not available';
   $('rPnr').textContent = 'PNR ' + d.pnr;
@@ -17,6 +62,10 @@ function show(d) {
   $('rDate').textContent = d.journeyDate || '-';
   $('rClass').textContent = d.travelClass || '-';
   $('rBoard').textContent = d.boarding || '-';
+  const countdown = journeyCountdown(d.journeyDate);
+  $('journeyCountdown').textContent = countdown;
+  $('journeyCountdown').hidden = !countdown;
+  renderStatusHistory(d.pnr);
 
   const body = $('rRows');
   body.innerHTML = '';
@@ -53,7 +102,10 @@ async function refreshStatus() {
 }
 
 function statusSignature(d) {
-  return (d.passengers || []).map(p => `${p.bookingStatus || ''}|${p.currentStatus || ''}`).join(';');
+  return JSON.stringify({
+    chartStatus: d.chartStatus || '',
+    passengers: (d.passengers || []).map(p => `${p.bookingStatus || ''}|${p.currentStatus || ''}`),
+  });
 }
 
 async function toggleAlerts() {
@@ -104,25 +156,33 @@ async function pollSavedPnrs() {
         });
       }
       localStorage.setItem(key, next);
-      PnrHistory.save(entry.pnr, { api: data });
+      PnrHistory.saveStatus(entry.pnr, data);
+      if ($('pnr').value.trim() === entry.pnr) renderStatusHistory(entry.pnr);
     } catch (e) {}
   }
   if (entries.length) showHistory();
 }
 
 async function check(pnr, force) {
-  if (!/^\d{10}$/.test(pnr)) { setMsg('PNR must be exactly 10 digits.', true); return; }
+  if (!/^\d{10}$/.test(pnr)) {
+    setMsg('PNR must be exactly 10 digits.', true);
+    $('result').hidden = true;
+    $('resultActions').hidden = true;
+    return;
+  }
   const btn = $('go');
   btn.disabled = true; btn.textContent = 'Checking...';
   setMsg('');
   $('result').hidden = true;
+  $('resultActions').hidden = true;
   try {
     const res = await fetch('/api/pnr/' + pnr + (force ? '?refresh=1' : ''));
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Could not fetch this PNR.');
     show(d);
     const { cached, ...api } = d;
-    PnrHistory.save(pnr, { api });
+    PnrHistory.saveStatus(pnr, api);
+    renderStatusHistory(pnr);
     showHistory();
     const alertKey = 'pnr-alert-' + pnr;
     $('notify').textContent = localStorage.getItem(alertKey) ? 'Disable change alerts' : 'Enable change alerts';
@@ -137,9 +197,19 @@ function showHistory() {
   PnrHistory.render($('history'), pnr => { $('pnr').value = pnr; check(pnr); });
 }
 
+function historyUpdated() {
+  showHistory();
+  const pnr = $('pnr').value.trim();
+  if (/^\d{10}$/.test(pnr)) {
+    $('notify').textContent = localStorage.getItem('pnr-alert-' + pnr) ? 'Disable change alerts' : 'Enable change alerts';
+  }
+}
+
 $('pnr').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); });
 $('pnrForm').addEventListener('submit', e => { e.preventDefault(); check($('pnr').value.trim()); });
 $('refresh').addEventListener('click', refreshStatus);
 $('notify').addEventListener('click', toggleAlerts);
+window.addEventListener('pnr-history-updated', historyUpdated);
+window.addEventListener('pnr-backup-message', e => setMsg(e.detail.message, e.detail.bad));
 setInterval(pollSavedPnrs, 5 * 60 * 1000);
 showHistory();
