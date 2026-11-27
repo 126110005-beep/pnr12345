@@ -15,7 +15,6 @@ const ROWS = [
   { id: 'requestOf', label: 'Request of', y: 1 },
   { id: 'train', label: 'Train number / full name', y: 1 },
   { id: 'date', label: 'Date of journey', type: 'date', y: 1 },
-  { id: 'time', label: 'Time of boarding', type: 'time', y: 1 },
   { id: 'berths', label: 'No. of berths', type: 'number', y: 1 },
   { id: 'cls', label: 'Travel class (code / full name)', type: 'select', y: 1 },
   { id: 'from', label: 'From station (code / full name)', up: 1, y: 1 },
@@ -178,19 +177,6 @@ function toISODate(s) {
   const d = new Date(s);
   return isNaN(d) ? '' : d.toISOString().slice(0, 10);
 }
-function toISOTime(s) {
-  if (!s) return '';
-  const text = String(s).trim();
-  let m = /(?:^|[T\s])(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/.exec(text);
-  if (m) return `${String(+m[1]).padStart(2, '0')}:${m[2]}`;
-  m = /^(\d{1,2})[:.](\d{2})\s*(AM|PM)$/i.exec(text);
-  if (m) {
-    let hour = +m[1] % 12;
-    if (/PM/i.test(m[3])) hour += 12;
-    return `${String(hour).padStart(2, '0')}:${m[2]}`;
-  }
-  return '';
-}
 function toClassCode(s) {
   const c = String(s || '').toUpperCase().replace(/\s/g, '');
   const map = { '1AC': '1A', '2AC': '2A', '3AC': '3A', '3ECO': '3E', SLEEPER: 'SL' };
@@ -206,34 +192,18 @@ function formatStation(code, name) {
   if (!n || n === c || n.includes(c)) return c;
   return `${c} - ${n}`;
 }
-function expandRailStatus(status) {
-  return String(status || '').replace(/\b(GNWL|PQWL|RLWL|TQWL|RAC|CNF|WL)\b/gi, code => ({
-    GNWL: 'General Waiting List (GNWL)',
-    PQWL: 'Pooled Quota Waiting List (PQWL)',
-    RLWL: 'Remote Location Waiting List (RLWL)',
-    TQWL: 'Tatkal Quota Waiting List (TQWL)',
-    RAC: 'Reservation Against Cancellation (RAC)',
-    CNF: 'Confirmed (CNF)',
-    WL: 'Waiting List (WL)',
-  })[code.toUpperCase()]);
-}
-
 // Puts a PNR status result into the form (used by "Fetch details" and by saved PNRs)
 function applyApi(d) {
   setApiVal('train', [d.trainNumber, d.trainName].filter(Boolean).join(' '));
   setApiVal('date', toISODate(d.journeyDate));
-  setApiVal('time', toISOTime(d.boardingTime));
   setApiVal('cls', toClassCode(d.travelClass));
   setApiVal('from', formatStation(d.from, d.fromName));
   setApiVal('to', formatStation(d.to, d.toName));
   setApiVal('boarding', formatStation(d.boarding, d.boardingName));
-  rowOf('time').querySelector('.hint').textContent = d.boardingTime
-    ? ''
-    : d.scheduleError || 'Boarding time was not provided; enter it manually.';
   if (d.passengers && d.passengers.length) {
     setVal('berths', d.passengers.length);
-    setVal('bookingStatus', expandRailStatus(d.passengers.map(p => p.bookingStatus).filter(Boolean).join(', ')));
-    setVal('currentStatus', expandRailStatus(d.passengers.map(p => p.currentStatus).filter(Boolean).join(', ')));
+    setVal('bookingStatus', d.passengers.map(p => p.bookingStatus).filter(Boolean).join(', '));
+    setVal('currentStatus', d.passengers.map(p => p.currentStatus).filter(Boolean).join(', '));
   }
   if (/not/i.test(d.chartStatus || '')) $('chartStatus').value = 'Chart Not Prepared';
   else if (/prepared/i.test(d.chartStatus || '')) $('chartStatus').value = 'Chart Prepared';
@@ -444,7 +414,6 @@ function shown(id) {
   const v = $(id).value.trim();
   if (!v) return '';
   if (id === 'date') { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v); return m ? `${m[3]}-${MONTHS[+m[2] - 1]}-${m[1]}` : v; }
-  if (id === 'time') { const m = /^(\d{2}):(\d{2})$/.exec(v); if (!m) return v; const h = +m[1]; return `${String(h % 12 || 12).padStart(2, '0')}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`; }
   if (id === 'cls') return $('cls').selectedOptions[0].textContent;
   return v;
 }
