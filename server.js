@@ -5,6 +5,8 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+// Compact station index from the Datameet Indian Railways dataset (CC0).
+const stationNames = require('./data/stations.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -66,18 +68,50 @@ function normalize(pnr, raw) {
   }
 
   const list = d.PassengerStatus || d.passengerStatus || d.passengerList || d.passengers || [];
+  const firstValue = (object, keys) => {
+    if (!object || typeof object !== 'object') return '';
+    for (const key of keys) {
+      const value = object[key];
+      if (value !== undefined && value !== null && typeof value !== 'object' && value !== '') return value;
+    }
+    for (const value of Object.values(object)) {
+      if (value && typeof value === 'object') {
+        const found = firstValue(value, keys);
+        if (found) return found;
+      }
+    }
+    return '';
+  };
+  const from = d.From || d.SourceStation || d.sourceStation || d.fromStation || '';
+  const to = d.To || d.DestinationStation || d.destinationStation || d.toStation || '';
+  const boarding = d.BoardingPoint || d.boardingPoint || d.boardingStation || '';
+  const boardingTime = firstValue(d, [
+    'boardingTime', 'BoardingTime', 'boardingStationDepartureTime', 'BoardingStationDepartureTime',
+    'boardingPointDepartureTime', 'BoardingPointDepartureTime', 'departureTimeAtBoardingStation',
+    'DepartureTimeAtBoardingStation', 'departureTimeFromBoardingPoint', 'DepartureTimeFromBoardingPoint',
+    'timeOfBoarding', 'TimeOfBoarding', 'boardingDateTime', 'BoardingDateTime',
+  ]) || (String(boarding).trim().toUpperCase() === String(from).trim().toUpperCase()
+    ? firstValue(d, ['sourceDepartureTime', 'SourceDepartureTime', 'scheduledDepartureTime', 'ScheduledDepartureTime', 'trainDepartureTime', 'TrainDepartureTime', 'departureTime', 'DepartureTime'])
+    : '');
+  const fullStationName = value => {
+    const code = String(value || '').trim().toUpperCase();
+    return stationNames[code] || '';
+  };
+  const fullTrainName = String(d.TrainName || d.trainName || '').replace(/\b(EXP|SF|SPL|PASS)\b\.?/gi, word => ({
+    EXP: 'EXPRESS', SF: 'SUPERFAST', SPL: 'SPECIAL', PASS: 'PASSENGER',
+  })[word.replace(/\./g, '').toUpperCase()] || word);
 
   return {
     pnr,
     trainNumber: d.TrainNo || d.trainNo || d.trainNumber || d.TrainNumber || '',
-    trainName: d.TrainName || d.trainName || '',
-    from: d.From || d.SourceStation || d.sourceStation || '',
-    to: d.To || d.DestinationStation || d.destinationStation || '',
-    boarding: d.BoardingPoint || d.boardingPoint || '',
-    fromName: d.FromName || d.SourceStationName || d.sourceStationName || d.FromStationName || '',
-    toName: d.ToName || d.DestinationStationName || d.destinationStationName || d.ToStationName || '',
-    boardingName: d.BoardingPointName || d.BoardingStationName || d.boardingPointName || d.boardingStationName || '',
-    boardingTime: d.BoardingTime || d.DepartureTime || d.departureTime || d.BoardingDateTime || d.boardingTime || '',
+    trainName: fullTrainName,
+    from,
+    to,
+    boarding,
+    fromName: d.FromName || d.SourceStationName || d.sourceStationName || d.FromStationName || fullStationName(from),
+    toName: d.ToName || d.DestinationStationName || d.destinationStationName || d.ToStationName || fullStationName(to),
+    boardingName: d.BoardingPointName || d.BoardingStationName || d.boardingPointName || d.boardingStationName || fullStationName(boarding),
+    boardingTime,
     journeyDate: d.Doj || d.DOJ || d.dateOfJourney || d.journeyDate || '',
     travelClass: d.Class || d.class || d.journeyClass || d.travelClass || '',
     chartStatus,

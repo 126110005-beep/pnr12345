@@ -6,31 +6,31 @@ const form = $('form');
 const statusEl = $('status');
 
 const CLASSES = [
-  ['SL', 'SL  Sleeper'], ['3A', '3A  AC 3-tier'], ['3E', '3E  AC 3 Economy'], ['2A', '2A  AC 2-tier'],
-  ['1A', '1A  First AC'], ['CC', 'CC  AC Chair Car'], ['EC', 'EC  Executive Chair Car'], ['2S', '2S  Second Sitting'],
+  ['SL', 'SL - Sleeper Class'], ['3A', '3A - AC 3-Tier'], ['3E', '3E - AC 3-Tier Economy'], ['2A', '2A - AC 2-Tier'],
+  ['1A', '1A - AC First Class'], ['CC', 'CC - AC Chair Car'], ['EC', 'EC - Executive Chair Car'], ['2S', '2S - Second Sitting'],
 ];
 
 // One entry per row of the Excel sheet. y = yellow (to be filled), opt = optional (prints "-")
 const ROWS = [
   { id: 'requestOf', label: 'Request of', y: 1 },
-  { id: 'train', label: 'Train no. / full name', y: 1 },
+  { id: 'train', label: 'Train number / full name', y: 1 },
   { id: 'date', label: 'Date of journey', type: 'date', y: 1 },
   { id: 'time', label: 'Time of boarding', type: 'time', y: 1 },
   { id: 'berths', label: 'No. of berths', type: 'number', y: 1 },
-  { id: 'cls', label: 'Class (short / full)', type: 'select', y: 1 },
-  { id: 'from', label: 'Station from (code / name)', up: 1, y: 1 },
-  { id: 'to', label: 'Station to (code / name)', up: 1, y: 1 },
-  { id: 'pnr', label: 'PNR number', type: 'tel', max: 10, fetch: 1, y: 1 },
+  { id: 'cls', label: 'Travel class (code / full name)', type: 'select', y: 1 },
+  { id: 'from', label: 'From station (code / full name)', up: 1, y: 1 },
+  { id: 'to', label: 'To station (code / full name)', up: 1, y: 1 },
+  { id: 'pnr', label: 'PNR (Passenger Name Record)', type: 'tel', max: 10, fetch: 1, y: 1 },
   { id: 'passenger', label: 'Name of passenger', y: 1 },
-  { id: 'mobile', label: 'Mob. no. of passenger', type: 'tel', max: 10, y: 1 },
+  { id: 'mobile', label: 'Mobile number of passenger', type: 'tel', max: 10, y: 1 },
   { type: 'signature', label: 'Signature' },
   { id: 'signName', label: 'Name' },
   { id: 'designation', label: 'Designation' },
-  { id: 'contactNo', label: 'Contact no. auto - off' },
+  { id: 'contactNo', label: 'Contact number (auto-off)' },
   { id: 'signMobile', label: 'Mobile number', type: 'tel', max: 10 },
   { id: 'officeAddress', label: 'Office address' },
   { type: 'bar', label: 'PNR status details' },
-  { id: 'boarding', label: 'Boarding station (code / name)', up: 1, y: 1 },
+  { id: 'boarding', label: 'Boarding station (code / full name)', up: 1, y: 1 },
   { id: 'bookingStatus', label: 'Booking status', y: 1 },
   { id: 'currentStatus', label: 'Current status', y: 1 },
   { id: 'chartStatus', label: 'Chart status', type: 'select', opts: [['Chart Prepared', 'Chart Prepared'], ['Chart Not Prepared', 'Chart Not Prepared']], y: 1 },
@@ -181,7 +181,7 @@ function toISODate(s) {
 function toISOTime(s) {
   if (!s) return '';
   const text = String(s).trim();
-  let m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(text);
+  let m = /(?:^|[T\s])(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/.exec(text);
   if (m) return `${String(+m[1]).padStart(2, '0')}:${m[2]}`;
   m = /^(\d{1,2})[:.](\d{2})\s*(AM|PM)$/i.exec(text);
   if (m) {
@@ -198,6 +198,7 @@ function toClassCode(s) {
   return CLASSES.some(([v]) => v === code) ? code : '';
 }
 function setVal(id, v) { if (v !== undefined && v !== null && v !== '') $(id).value = v; }
+function setApiVal(id, v) { $(id).value = v == null ? '' : String(v); }
 function formatStation(code, name) {
   const c = String(code || '').trim().toUpperCase();
   const n = String(name || '').trim().toUpperCase();
@@ -205,20 +206,34 @@ function formatStation(code, name) {
   if (!n || n === c || n.includes(c)) return c;
   return `${c} - ${n}`;
 }
+function expandRailStatus(status) {
+  return String(status || '').replace(/\b(GNWL|PQWL|RLWL|TQWL|RAC|CNF|WL)\b/gi, code => ({
+    GNWL: 'General Waiting List (GNWL)',
+    PQWL: 'Pooled Quota Waiting List (PQWL)',
+    RLWL: 'Remote Location Waiting List (RLWL)',
+    TQWL: 'Tatkal Quota Waiting List (TQWL)',
+    RAC: 'Reservation Against Cancellation (RAC)',
+    CNF: 'Confirmed (CNF)',
+    WL: 'Waiting List (WL)',
+  })[code.toUpperCase()]);
+}
 
 // Puts a PNR status result into the form (used by "Fetch details" and by saved PNRs)
 function applyApi(d) {
-  setVal('train', [d.trainNumber, d.trainName].filter(Boolean).join(' '));
-  setVal('date', toISODate(d.journeyDate));
-  setVal('time', toISOTime(d.boardingTime));
-  setVal('cls', toClassCode(d.travelClass));
-  setVal('from', formatStation(d.from, d.fromName));
-  setVal('to', formatStation(d.to, d.toName));
-  setVal('boarding', formatStation(d.boarding, d.boardingName));
+  setApiVal('train', [d.trainNumber, d.trainName].filter(Boolean).join(' '));
+  setApiVal('date', toISODate(d.journeyDate));
+  setApiVal('time', toISOTime(d.boardingTime));
+  setApiVal('cls', toClassCode(d.travelClass));
+  setApiVal('from', formatStation(d.from, d.fromName));
+  setApiVal('to', formatStation(d.to, d.toName));
+  setApiVal('boarding', formatStation(d.boarding, d.boardingName));
+  rowOf('time').querySelector('.hint').textContent = d.boardingTime
+    ? ''
+    : 'Boarding time was not provided by the PNR service; enter it manually.';
   if (d.passengers && d.passengers.length) {
     setVal('berths', d.passengers.length);
-    setVal('bookingStatus', d.passengers.map(p => p.bookingStatus).filter(Boolean).join(', '));
-    setVal('currentStatus', d.passengers.map(p => p.currentStatus).filter(Boolean).join(', '));
+    setVal('bookingStatus', expandRailStatus(d.passengers.map(p => p.bookingStatus).filter(Boolean).join(', ')));
+    setVal('currentStatus', expandRailStatus(d.passengers.map(p => p.currentStatus).filter(Boolean).join(', ')));
   }
   if (/not/i.test(d.chartStatus || '')) $('chartStatus').value = 'Chart Not Prepared';
   else if (/prepared/i.test(d.chartStatus || '')) $('chartStatus').value = 'Chart Prepared';
@@ -276,6 +291,7 @@ function loadPnr(pnr) {
   // start clean so nothing from the previous PNR carries over
   PER_PNR.forEach(id => { if (id !== 'pnr') $(id).value = (e && e.form && e.form[id]) || ''; });
   if (e && e.form) {
+    if (e.api) applyApi(e.api);
     pnrHint('Loaded the details you saved for this PNR.', true);
   } else if (e && e.api) {
     applyApi(e.api);
@@ -429,6 +445,7 @@ function shown(id) {
   if (!v) return '';
   if (id === 'date') { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v); return m ? `${m[3]}-${MONTHS[+m[2] - 1]}-${m[1]}` : v; }
   if (id === 'time') { const m = /^(\d{2}):(\d{2})$/.exec(v); if (!m) return v; const h = +m[1]; return `${String(h % 12 || 12).padStart(2, '0')}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`; }
+  if (id === 'cls') return $('cls').selectedOptions[0].textContent;
   return v;
 }
 
