@@ -1,0 +1,18 @@
+{
+  "name": "PNR Status and Emergency Quota Requisition",
+  "short_name": "PNR Status",
+  "description": "Check train PNR status and prepare an emergency quota requisition.",
+  "start_url": "/requisition.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f1f3d",
+  "theme_color": "#0f1f3d",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -26,9 +26,18 @@ body {
     var(--night);
 }
 .wrap { max-width: 680px; margin: 0 auto; padding: 28px 16px 60px; }
-.topnav { margin-bottom: 16px; }
+.topnav { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .topnav a { color: #b9c3d8; text-decoration: none; font-weight: 600; font-size: 14px; }
 .topnav a:hover { color: #fff; }
+.skip-link {
+  position: absolute; z-index: 10; top: 8px; left: 8px; padding: 10px 14px;
+  color: #111827; background: #fff; border-radius: 8px; transform: translateY(-160%);
+}
+.skip-link:focus { transform: translateY(0); }
+.install-btn { min-height: 44px; margin-left: auto; padding: 8px 13px; font: inherit; font-size: 13px; font-weight: 700; color: #14284b; background: #d9b66a; border: 0; border-radius: 9px; cursor: pointer; }
+.install-hint { color: #b9c3d8; font-size: 12px; }
+.connection-status { min-height: 20px; margin: -8px 2px 12px; color: #c9d5ea; font-size: 12px; }
+.connection-status.offline { color: #ffe08a; }
 
 /* Sheet */
 .sheet {
@@ -87,6 +96,7 @@ body {
 .row.y .cell { background: var(--yellow); }
 .cell input, .cell select {
   width: 100%;
+  min-height: 44px;
   padding: 9px 10px;
   font: inherit;
   font-size: 15px;
@@ -166,6 +176,7 @@ body {
 .btn.small { padding: 8px 14px; font-size: 14px; color: var(--navy); border-color: var(--rule); background: #fff; }
 .btn.small:hover { background: var(--label); }
 .btn:focus-visible, .fetch:focus-visible, .tab:focus-visible { outline: 3px solid var(--brass); outline-offset: 2px; }
+.topnav a:focus-visible, .install-btn:focus-visible, .icon:focus-visible, .font-opt:focus-visible, .cell input:focus-visible, .cell select:focus-visible { outline: 3px solid #ffe08a; outline-offset: 3px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .status { min-height: 22px; margin: 12px 2px 0; color: #7fe0ae; font-size: 14px; }
 .status.err { color: #ffb4ab; }
@@ -256,6 +267,13 @@ dialog::backdrop { background: rgba(8, 14, 28, 0.65); }
 @media (prefers-reduced-motion: no-preference) {
   .sheet { animation: rise 0.45s ease-out; }
   @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+}
+@media (prefers-contrast: more) {
+  .topnav a, .connection-status, .note { color: #fff; }
+  .cell input, .cell select { border-color: #81755f; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
 .upper input::placeholder { text-transform: none; }

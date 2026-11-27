@@ -15,6 +15,7 @@
 .hist-tools { display: flex; gap: 10px; margin-left: auto; }
 .hist-empty { margin: 0; color: #b9c3d8; font-size: 13px; }
 .hist-clear:disabled { opacity: 0.45; cursor: default; }
+.hist-clear { min-height: 44px; }
 .privacy-hint { margin: -12px 2px 18px; color: #98a5bf; font-size: 12px; }
 .hist-clear {
   font: inherit;
@@ -45,6 +46,7 @@
   flex-direction: column;
   align-items: flex-start;
   padding: 8px 12px;
+  min-height: 44px;
   font: inherit;
   text-align: left;
   color: #fff;
@@ -55,7 +57,8 @@
 .hist-pnr { font-weight: 700; font-size: 15px; letter-spacing: 0.06em; }
 .hist-sub { font-size: 12px; color: #b9c3d8; }
 .hist-del {
-  width: 32px;
+  width: 44px;
+  min-height: 44px;
   font-size: 18px;
   color: #b9c3d8;
   background: none;

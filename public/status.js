@@ -1,6 +1,7 @@
 // status.js — PNR status page. Calls your /api/pnr/:pnr route and shows the result.
 
 const $ = id => document.getElementById(id);
+let lastResult = null;
 
 function setMsg(text, bad) {
   $('msg').textContent = text || '';
@@ -52,30 +53,133 @@ function renderStatusHistory(pnr) {
   });
 }
 
+function statusExplanation(value) {
+  const status = String(value || '').toUpperCase();
+  const explanations = [
+    [/\bCNF\b|\bCONFIRMED\b/, 'Confirmed. Coach and berth details may appear after chart preparation.'],
+    [/\bRAC\b/, 'Reservation Against Cancellation. Travel is permitted; berth allocation may change.'],
+    [/\bGNWL\b/, 'General Wait List.'],
+    [/\bRLWL\b/, 'Remote Location Wait List.'],
+    [/\bPQWL\b/, 'Pooled Quota Wait List.'],
+    [/\bTQWL\b/, 'Tatkal Quota Wait List.'],
+    [/\bRQWL\b/, 'Roadside Quota Wait List.'],
+    [/\bDPWL\b/, 'Duty Pass Wait List.'],
+    [/\bWL\b|\bWAITLIST(?:ED)?\b/, 'Waitlisted. The ticket is not yet confirmed; check its current status before travel.'],
+    [/\bCAN(?:CELLED)?\b|\bMOD\b/, 'Cancelled or modified passenger entry.'],
+  ];
+  const match = explanations.find(([pattern]) => pattern.test(status));
+  return match ? match[1] : '';
+}
+
+function renderStatusCell(cell, value) {
+  const text = value || '-';
+  const status = document.createElement('span');
+  status.textContent = text;
+  cell.appendChild(status);
+  const explanation = statusExplanation(text);
+  if (explanation) {
+    const help = document.createElement('small');
+    help.className = 'status-explanation';
+    help.textContent = explanation;
+    cell.appendChild(help);
+  }
+}
+
+function maskedPnr(pnr) {
+  return `******${String(pnr || '').slice(-4)}`;
+}
+
+function shareText(d) {
+  const route = [d.fromName || d.from, d.toName || d.to].filter(Boolean).join(' to ');
+  const passengers = (d.passengers || []).map((p, index) =>
+    `Passenger ${p.number || index + 1}: ${p.currentStatus || p.bookingStatus || 'Status unavailable'}`
+  );
+  return [
+    d.trainName ? `${d.trainName}${d.trainNumber ? ` (${d.trainNumber})` : ''}` : d.trainNumber ? `Train ${d.trainNumber}` : 'Train journey',
+    route ? `Route: ${route}` : '',
+    d.journeyDate ? `Journey date: ${d.journeyDate}` : '',
+    d.travelClass ? `Class: ${d.travelClass}` : '',
+    `PNR: ${maskedPnr(d.pnr)}`,
+    d.chartStatus ? `Chart: ${d.chartStatus}` : '',
+    ...passengers,
+    '',
+    'PNR details are masked in this shared summary.',
+  ].filter(Boolean).join('\n');
+}
+
+async function copySafeSummary() {
+  if (!lastResult) return;
+  const text = shareText(lastResult);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const field = document.createElement('textarea');
+      field.value = text;
+      field.setAttribute('readonly', '');
+      field.style.position = 'fixed';
+      field.style.opacity = '0';
+      document.body.appendChild(field);
+      field.select();
+      const copied = document.execCommand('copy');
+      field.remove();
+      if (!copied) throw new Error('Clipboard access is unavailable.');
+    }
+    setMsg('Copied a share summary with the PNR masked.');
+  } catch (error) {
+    setMsg('Could not copy the summary. Check clipboard permissions and try again.', true);
+  }
+}
+
+async function shareSafeSummary() {
+  if (!lastResult || !navigator.share) return;
+  try {
+    await navigator.share({ title: 'Train journey status', text: shareText(lastResult) });
+  } catch (error) {
+    if (error.name !== 'AbortError') setMsg('Could not open the share sheet.', true);
+  }
+}
+
+function renderJourneyTimeline(d) {
+  const passengers = d.passengers || [];
+  $('timelineJourney').textContent = d.journeyDate || 'Date unavailable';
+  $('timelineBooking').textContent = passengers.map(p => p.bookingStatus).filter(Boolean).join(', ') || 'Status unavailable';
+  $('timelineCurrent').textContent = passengers.map(p => p.currentStatus || p.bookingStatus).filter(Boolean).join(', ') || 'Status unavailable';
+  $('timelineChart').textContent = d.chartStatus || 'Unknown';
+}
+
 function show(d) {
+  lastResult = d;
   $('rTrain').textContent = [d.trainNumber, d.trainName].filter(Boolean).join(' ') || 'Train details not available';
   $('rPnr').textContent = 'PNR ' + d.pnr;
   $('rChart').textContent = d.chartStatus || 'Unknown';
   $('rChart').className = 'chip' + (/not/i.test(d.chartStatus || '') ? '' : ' ok');
   $('rFrom').textContent = d.from || '-';
   $('rTo').textContent = d.to || '-';
+  $('rFromName').textContent = d.fromName && d.fromName !== d.from ? d.fromName : 'From';
+  $('rToName').textContent = d.toName && d.toName !== d.to ? d.toName : 'To';
   $('rDate').textContent = d.journeyDate || '-';
   $('rClass').textContent = d.travelClass || '-';
   $('rBoard').textContent = d.boarding || '-';
   const countdown = journeyCountdown(d.journeyDate);
   $('journeyCountdown').textContent = countdown;
   $('journeyCountdown').hidden = !countdown;
+  renderJourneyTimeline(d);
   renderStatusHistory(d.pnr);
 
   const body = $('rRows');
   body.innerHTML = '';
   (d.passengers || []).forEach((p, i) => {
     const tr = document.createElement('tr');
-    [p.number || i + 1, p.bookingStatus || '-', p.currentStatus || '-'].forEach(v => {
-      const td = document.createElement('td');
-      td.textContent = v;
-      tr.appendChild(td);
-    });
+    const number = document.createElement('td');
+    number.textContent = p.number || i + 1;
+    tr.appendChild(number);
+    const booking = document.createElement('td');
+    renderStatusCell(booking, p.bookingStatus);
+    tr.appendChild(booking);
+    const current = document.createElement('td');
+    renderStatusCell(current, p.currentStatus);
+    tr.appendChild(current);
     body.appendChild(tr);
   });
 
@@ -85,6 +189,8 @@ function show(d) {
   $('result').hidden = false;
   $('resultActions').hidden = false;
   $('lastChecked').textContent = d.cached ? 'Checked just now (cached)' : 'Checked just now';
+  $('shareSummary').hidden = typeof navigator.share !== 'function';
+  $('resultAnnouncement').textContent = `PNR status loaded${d.trainName ? ` for ${d.trainName}` : ''}.`;
 }
 
 async function refreshStatus() {
@@ -209,6 +315,8 @@ $('pnr').addEventListener('input', e => { e.target.value = e.target.value.replac
 $('pnrForm').addEventListener('submit', e => { e.preventDefault(); check($('pnr').value.trim()); });
 $('refresh').addEventListener('click', refreshStatus);
 $('notify').addEventListener('click', toggleAlerts);
+$('copySummary').addEventListener('click', copySafeSummary);
+$('shareSummary').addEventListener('click', shareSafeSummary);
 window.addEventListener('pnr-history-updated', historyUpdated);
 window.addEventListener('pnr-backup-message', e => setMsg(e.detail.message, e.detail.bad));
 setInterval(pollSavedPnrs, 5 * 60 * 1000);

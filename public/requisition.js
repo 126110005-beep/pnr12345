@@ -124,9 +124,16 @@ function buildRows() {
 }
 
 async function loadStations(query) {
+  if (!navigator.onLine) {
+    say('Station suggestions need internet. Enter the station manually.', true);
+    return;
+  }
   try {
     const res = await fetch('/api/stations?q=' + encodeURIComponent(query || ''));
-    if (!res.ok) return;
+    if (!res.ok) {
+      say('Station suggestions could not be loaded. Enter the station manually.', true);
+      return;
+    }
     const stations = await res.json();
     const list = $('stationList');
     list.innerHTML = '';
@@ -135,7 +142,9 @@ async function loadStations(query) {
       option.value = `${code} - ${name}`;
       list.appendChild(option);
     });
-  } catch (e) {}
+  } catch (e) {
+    say('Station suggestions could not be loaded. Enter the station manually.', true);
+  }
 }
 
 const rowOf = id => form.querySelector(`.row[data-f="${id}"]`);
@@ -392,7 +401,12 @@ function drawUpload() {
 
 function switchTab(t) {
   tab = t;
-  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.tab').forEach(b => {
+    const selected = b.dataset.tab === t;
+    b.classList.toggle('on', selected);
+    b.setAttribute('aria-selected', String(selected));
+    b.tabIndex = selected ? 0 : -1;
+  });
   document.querySelectorAll('.panel').forEach(p => { p.hidden = p.dataset.panel !== t; });
   $('sigMsg').textContent = '';
   if (t === 'draw') sizePad();
@@ -583,4 +597,15 @@ $('sigRemove').addEventListener('click', () => setSignature(''));
 $('sigClose').addEventListener('click', () => dlg.close());
 $('sigCancel').addEventListener('click', () => dlg.close());
 $('sigApply').addEventListener('click', applySignature);
-document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+document.querySelectorAll('.tab').forEach((button, index, tabs) => {
+  button.addEventListener('click', () => switchTab(button.dataset.tab));
+  button.addEventListener('keydown', event => {
+    const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1
+      : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    if (!direction) return;
+    event.preventDefault();
+    const next = tabs[(index + direction + tabs.length) % tabs.length];
+    switchTab(next.dataset.tab);
+    next.focus();
+  });
+});

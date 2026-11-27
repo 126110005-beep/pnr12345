@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f1f3d" />
   <title>NS 871(A) Emergency Quota Requisition</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="app-icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700&family=Dancing+Script:wght@600&family=Great+Vibes&family=Caveat:wght@600&display=swap" rel="stylesheet" />
@@ -11,8 +14,14 @@
   <link rel="stylesheet" href="history.css" />
 </head>
 <body>
-  <main class="wrap">
-    <nav class="topnav no-print"><a href="index.html">Back to PNR status</a></nav>
+  <a class="skip-link no-print" href="#main">Skip to requisition form</a>
+  <main class="wrap" id="main">
+    <nav class="topnav no-print" aria-label="Main navigation">
+      <a href="index.html">Back to PNR status</a>
+      <button id="installApp" class="install-btn" type="button" hidden>Install app</button>
+      <span class="install-hint">Install from your browser menu or choose Add to Home Screen.</span>
+    </nav>
+    <p id="connectionStatus" class="connection-status no-print" role="status" aria-live="polite"></p>
 
     <datalist id="pnrList"></datalist>
     <datalist id="stationList"></datalist>
@@ -44,23 +53,23 @@
     </div>
 
     <div class="tabs" role="tablist">
-      <button type="button" role="tab" class="tab on" data-tab="draw">Draw</button>
-      <button type="button" role="tab" class="tab" data-tab="type">Type</button>
-      <button type="button" role="tab" class="tab" data-tab="upload">Upload</button>
+      <button type="button" role="tab" id="tabDraw" class="tab on" data-tab="draw" aria-controls="panelDraw" aria-selected="true">Draw</button>
+      <button type="button" role="tab" id="tabType" class="tab" data-tab="type" aria-controls="panelType" aria-selected="false" tabindex="-1">Type</button>
+      <button type="button" role="tab" id="tabUpload" class="tab" data-tab="upload" aria-controls="panelUpload" aria-selected="false" tabindex="-1">Upload</button>
     </div>
 
-    <section class="panel" data-panel="draw">
+    <section class="panel" id="panelDraw" role="tabpanel" aria-labelledby="tabDraw" data-panel="draw">
       <canvas id="pad" aria-label="Signature drawing area"></canvas>
       <p class="tip">Sign with your finger, stylus or mouse.</p>
       <button class="btn small" type="button" id="padClear">Clear</button>
     </section>
 
-    <section class="panel" data-panel="type" hidden>
+    <section class="panel" id="panelType" role="tabpanel" aria-labelledby="tabType" data-panel="type" hidden>
       <input id="typeText" type="text" placeholder="Type your name" autocomplete="off" />
       <div id="fontList" class="fonts"></div>
     </section>
 
-    <section class="panel" data-panel="upload" hidden>
+    <section class="panel" id="panelUpload" role="tabpanel" aria-labelledby="tabUpload" data-panel="upload" hidden>
       <input id="upFile" type="file" accept="image/png,image/jpeg,image/webp" />
       <label class="check"><input id="upClean" type="checkbox" checked /> Remove white background</label>
       <canvas id="upView" hidden></canvas>
@@ -74,6 +83,7 @@
     </div>
   </dialog>
 
+  <script src="pwa.js"></script>
   <script src="history.js"></script>
   <script src="requisition.js"></script>
 </body>

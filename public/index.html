@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f1f3d" />
   <title>PNR Status</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="app-icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -11,8 +14,14 @@
   <link rel="stylesheet" href="history.css" />
 </head>
 <body>
-  <main class="wrap">
-    <nav class="topnav"><a href="requisition.html">Open emergency quota requisition form</a></nav>
+  <a class="skip-link" href="#main">Skip to PNR lookup</a>
+  <main class="wrap" id="main">
+    <nav class="topnav" aria-label="Main navigation">
+      <a href="requisition.html">Open emergency quota requisition form</a>
+      <button id="installApp" class="install-btn" type="button" hidden>Install app</button>
+      <span class="install-hint">Install from your browser menu or choose Add to Home Screen.</span>
+    </nav>
+    <p id="connectionStatus" class="connection-status" role="status" aria-live="polite"></p>
 
     <header class="hero">
       <h1>PNR <span>Status</span></h1>
@@ -31,10 +40,12 @@
     <div id="resultActions" class="result-actions" hidden>
       <button id="refresh" class="mini-btn" type="button">Refresh status</button>
       <button id="notify" class="mini-btn" type="button">Enable change alerts</button>
+      <button id="copySummary" class="mini-btn" type="button">Copy safe summary</button>
+      <button id="shareSummary" class="mini-btn" type="button">Share</button>
       <span id="lastChecked" class="last-checked"></span>
     </div>
 
-    <section id="result" class="card" hidden>
+    <section id="result" class="card" aria-label="PNR journey details" hidden>
       <div class="card-head">
         <div>
           <div class="train" id="rTrain"></div>
@@ -43,9 +54,9 @@
         <span class="chip" id="rChart"></span>
       </div>
       <div class="route">
-        <div><b id="rFrom"></b><small>From</small></div>
+        <div><b id="rFrom"></b><small id="rFromName">From</small></div>
         <div class="arrow">&rarr;</div>
-        <div><b id="rTo"></b><small>To</small></div>
+        <div><b id="rTo"></b><small id="rToName">To</small></div>
       </div>
       <dl class="meta">
         <div><dt>Date of journey</dt><dd id="rDate"></dd></div>
@@ -53,10 +64,34 @@
         <div><dt>Boarding</dt><dd id="rBoard"></dd></div>
       </dl>
       <p class="journey-countdown" id="journeyCountdown" hidden></p>
+      <section class="journey-panel" aria-labelledby="journeyTimelineTitle">
+        <h2 id="journeyTimelineTitle">Journey and ticket timeline</h2>
+        <ol class="journey-timeline">
+          <li><span>Journey date</span><strong id="timelineJourney"></strong></li>
+          <li><span>Booking status</span><strong id="timelineBooking"></strong></li>
+          <li><span>Current status</span><strong id="timelineCurrent"></strong></li>
+          <li><span>Chart status</span><strong id="timelineChart"></strong></li>
+        </ol>
+      </section>
       <table>
-        <thead><tr><th>#</th><th>Booking status</th><th>Current status</th></tr></thead>
+        <caption class="sr-only">Booking and current status for each passenger</caption>
+        <thead><tr><th scope="col">#</th><th scope="col">Booking status</th><th scope="col">Current status</th></tr></thead>
         <tbody id="rRows"></tbody>
       </table>
+      <details class="status-guide">
+        <summary>Understand ticket status codes</summary>
+        <dl>
+          <div><dt>CNF</dt><dd>Confirmed. Coach and berth details may appear after chart preparation.</dd></div>
+          <div><dt>RAC</dt><dd>Reservation Against Cancellation. Travel is permitted; berth allocation may change.</dd></div>
+          <div><dt>WL</dt><dd>Waitlisted. The ticket is not yet confirmed; check the current status before travel.</dd></div>
+          <div><dt>GNWL</dt><dd>General Wait List.</dd></div>
+          <div><dt>RLWL</dt><dd>Remote Location Wait List.</dd></div>
+          <div><dt>PQWL</dt><dd>Pooled Quota Wait List.</dd></div>
+          <div><dt>TQWL</dt><dd>Tatkal Quota Wait List.</dd></div>
+          <div><dt>CAN / MOD</dt><dd>Cancelled or modified passenger entry.</dd></div>
+        </dl>
+        <p>Meanings are general; use the live railway enquiry for the authoritative status.</p>
+      </details>
       <p class="note" id="rNote"></p>
       <details id="statusHistoryPanel" class="status-history" hidden>
         <summary>Saved status history</summary>
@@ -65,6 +100,8 @@
     </section>
   </main>
 
+  <p id="resultAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+  <script src="pwa.js"></script>
   <script src="history.js"></script>
   <script src="status.js"></script>
 </body>
